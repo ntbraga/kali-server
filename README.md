@@ -1,7 +1,11 @@
-# Awesome Project Build with TypeORM
+# Kali is a framework based on express and typeorm
 
-Steps to run this project:
 
-1. Run `npm i` command
-2. Setup database settings inside `ormconfig.json` file
-3. Run `npm start` command
+* Dependency injection
+* Concise controller for routing
+* Typed entities
+* Injection of helpers and repositories
+* Authentication service
+* Session
+* Environment
+* Use any express midleware you want
