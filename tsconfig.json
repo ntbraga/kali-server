@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./src/",
+    "lib": ["dom", "es7"],
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "esnext",
+    "noImplicitReturns": true,
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": true,
+    "strictPropertyInitialization": false,
+    "typeRoots": [
+      "node_modules/@types"
+    ]
+  }
+}
