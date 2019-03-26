@@ -154,6 +154,11 @@ export function Server(options: ServerOptions): TypeDecorator {
         }
 
         addToInjectionChain(target);
+
+        if(options.auth != undefined && options.auth.authService != undefined) {
+            addToInjectionChain(options.auth.authService);
+        }
+
         ConditionalExecutor.create(() => {
             if (options.cluster == undefined || (options.cluster != undefined && !options.cluster.enabled)) {
                 createServerAndListen(options).then(() => {
