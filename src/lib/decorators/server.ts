@@ -14,7 +14,7 @@ import * as addRequestId from 'express-request-id';
 import * as session from 'express-session';
 import * as cluster from 'cluster';
 import * as os from 'os';
-import { Worker } from 'cluster'; 
+import { Worker } from 'cluster';
 import { Environment } from 'lib/command/commands';
 
 export interface MappingParameter {
@@ -50,8 +50,22 @@ export interface ClusterOptions {
     lenght?: number;
 }
 
-export const ServerMetadata: Map<ControllerMetadata<any>> = new HashMap<ControllerMetadata<any>>();
+export interface ApiPathOptions {
+    version: number,
+    minVersion?: number,
+    versionPrefix?: string,
+    minVersionPrefix?: string,
+    useApi?: boolean
+}
 
+export interface ServerPathOptions {
+    basePath?: string
+}
+
+export type PathOptions = ApiPathOptions & ServerPathOptions;
+
+export const ServerMetadata: Map<ControllerMetadata<any>> = new HashMap<ControllerMetadata<any>>();
+export let ServerDataOptions: ServerOptions;
 export interface ServerOptions {
     sessionOptions: session.SessionOptions;
     controllers?: Type<any>[];
@@ -59,6 +73,7 @@ export interface ServerOptions {
     use?: RequestHandler[];
     auth?: AuthOptions;
     cluster?: ClusterOptions;
+    path?: PathOptions;
     environments: MapObject<Environment>;
 }
 
@@ -135,27 +150,37 @@ export function RequestBody<T>(): ParameterDecorator {
 export function Server(options: ServerOptions): TypeDecorator {
     return (target: Type<any>) => {
         exportEnvironments(options.environments);
-        if(CommandLine.cluster == undefined && options.cluster != undefined) {
+        if (CommandLine.cluster == undefined && options.cluster != undefined) {
             CommandLine.cluster = options.cluster.enabled;
         }
 
-        if(CommandLine.cluster == true) {
-            if(options.cluster == undefined) {
+        if(CommandLine.version != undefined) {
+            if(options.path == undefined) {
+                options.path = { version: CommandLine.version };
+            }            
+        }
+
+        if(CommandLine.minVersion != undefined && options.path != undefined) {
+            options.path.minVersion = CommandLine.minVersion;          
+        }
+
+        if (CommandLine.cluster == true) {
+            if (options.cluster == undefined) {
                 options.cluster = { enabled: CommandLine.cluster == true || CommandLine.cluster != undefined };
             }
 
             options.cluster.enabled = true;
 
-            if(CommandLine.clusterSize == true) {
+            if (CommandLine.clusterSize == true) {
                 options.cluster.lenght = undefined;
-            } else if(!isNaN(<number>CommandLine.clusterSize)) {
+            } else if (!isNaN(<number>CommandLine.clusterSize)) {
                 options.cluster.lenght = Number(CommandLine.clusterSize);
             }
         }
 
         addToInjectionChain(target);
 
-        if(options.auth != undefined && options.auth.authService != undefined) {
+        if (options.auth != undefined && options.auth.authService != undefined) {
             addToInjectionChain(options.auth.authService);
         }
 
@@ -207,18 +232,57 @@ function forkClusters(qtd: number, each: (worker) => void): Worker[] {
 
 
 function createServerAndListen(options: ServerOptions) {
+    ServerDataOptions = options;
     return new Promise((resolve, reject) => {
         connect().then((connection) => {
             processInjectionChain();
             const auth: AuthOptions = options.auth;
             const AppServer: Express = express();
+            
+            const appRouter = Router({ mergeParams: true });
+
+            let appPrefix = '';
+
             AppServer.use([session(options.sessionOptions), addRequestId()]);
             AppServer.use(options.use || []);
+
+            if (options.path != undefined) {
+                const path: PathOptions = options.path;
+                if (path.basePath != undefined) {
+                    appPrefix = path.basePath;
+                }
+
+                if(path.useApi == undefined) {
+                    path.useApi = true;
+                }
+
+                if(path.useApi) {
+                    appPrefix += '/api';
+                }
+
+                if (path.version != undefined) {
+                    if (path.versionPrefix == undefined) {
+                        path.versionPrefix = 'v';
+                    }
+                    appPrefix += '/' + path.versionPrefix + path.version;
+                }
+
+                if(path.minVersion != undefined) {
+                    if(path.minVersionPrefix == undefined) {
+                        path.minVersionPrefix = 'b';
+                    }
+                    appPrefix += '/' + path.minVersionPrefix + path.minVersion;
+                }
+            }
+
+            if(!appPrefix.startsWith('/')) {
+                appPrefix = '/' + appPrefix;
+            }
 
             let authService;
             if (auth != undefined) {
                 authService = getFromInjectionChain(auth.authService);
-                AppServer.use(auth.path || '/auth', getAuthRouter(authService));
+                appRouter.use(auth.path || '/auth', getAuthRouter(authService));
             }
 
             ServerMetadata.forEachAsync((key, value) => {
@@ -226,8 +290,10 @@ function createServerAndListen(options: ServerOptions) {
                 value.mappings.forEach((key, map) => {
                     handleMapping(value, map, authService);
                 });
-                AppServer.use(value.options.path, value.app);
+                appRouter.use(value.options.path, value.app);
             }).then(() => {
+                console.log('base path', appPrefix);
+                AppServer.use(appPrefix, appRouter);
                 AppServer.listen(CommandLine.port, () => {
                     resolve();
                 });

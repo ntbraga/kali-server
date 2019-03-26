@@ -4,7 +4,7 @@
    "description": "",
    "main": "index.js",
    "scripts": {
-      "dev": "nodemon --watch \"src/\" --exec \"ts-node src/server.ts --env=test --port=3001\" -e ts",
+      "dev": "nodemon --watch \"src/\" --exec \"ts-node src/server.ts --env=test --port=3001 --version=2 --minVersion=203\" -e ts",
       "start": "ts-node src/index.ts"
    },
    "keywords": [],

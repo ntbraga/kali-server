@@ -1,4 +1,4 @@
-import { Controller, RequestMethod, RequestMapping } from './../lib/decorators/server';
+import { Controller, RequestMethod, RequestMapping, ServerMetadata, ServerDataOptions } from './../lib/decorators/server';
 import { HttpStatus } from '../lib/main/http';
 import { Inject, Persistence } from '../lib/decorators/injection';
 import { MemoryHelper } from './../helpers/MemoryHelper';
@@ -17,6 +17,16 @@ export class MemoryController {
 
     @Persistence()
     connection: Connection;
+
+    @RequestMapping({
+        path: '/mapping'
+    })
+    getMapping() {
+        return {
+            mapping: ServerMetadata.getAsObject(),
+            options: ServerDataOptions
+        };
+    }
 
     @RequestMapping()
     getSystem() {

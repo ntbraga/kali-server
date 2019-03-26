@@ -47,6 +47,8 @@ export interface Environment {
     cluster?: boolean | ClusterOptions;
     clusterSize?: number | boolean;
     connection: ConnectionOptions;
+    version?: number;
+    minVersion?: number;
 }
 
 export let CommandLine: Environment;
